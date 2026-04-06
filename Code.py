@@ -66,8 +66,7 @@ sobel_x = torch.tensor([
 sobel_y = torch.tensor([
 [-1,-2,-1],
 [0,0,0],
-[1,2,1]
-],dtype=torch.float32).view(1,1,3,3).to(device)
+[1,2,1]],dtype=torch.float32).view(1,1,3,3).to(device)
 
 # ==========================================
 
