@@ -1,5 +1,6 @@
 """CIFAR-10 data pipeline with separate train and evaluation transforms."""
 
+import torch
 from torch.utils.data import DataLoader, Subset
 import torchvision
 import torchvision.transforms as transforms
@@ -29,8 +30,8 @@ def build_loaders(root="./data", batch_size=128, num_workers=0, seed=42, downloa
     total = len(augmented)
     train_size = int(0.8 * total)
     val_size = int(0.1 * total)
-    generator = __import__("torch").Generator().manual_seed(seed)
-    indices = __import__("torch").randperm(total, generator=generator).tolist()
+    generator = torch.Generator().manual_seed(seed)
+    indices = torch.randperm(total, generator=generator).tolist()
     train_idx = indices[:train_size]
     val_idx = indices[train_size:train_size + val_size]
     test_idx = indices[train_size + val_size:]
