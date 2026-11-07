@@ -45,4 +45,4 @@ The modular version makes the split reproducible (seed 42 by default) and uses d
 python -m unittest discover -s tests
 ```
 
-Tests check model output shapes and gradient flow; they do not train on the full CIFAR-10 dataset or establish research performance.
+Tests check model output shapes and gradient flow; they do not train on the full CIFAR-10 dataset or establish research performance..
