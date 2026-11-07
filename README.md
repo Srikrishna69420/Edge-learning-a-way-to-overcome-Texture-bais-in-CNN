@@ -1,37 +1,48 @@
 # Edge learning: reducing texture bias in CNNs
 
-An exploratory CIFAR-10 project that combines a texture-processing CNN with an edge/shape-processing CNN. Sobel filters produce an edge map; a second branch processes the edge representation, and a decoder is trained to reconstruct edges alongside the classification objective.
+An exploratory CIFAR-10 project combining an RGB texture branch with a Sobel-edge shape branch. A decoder is trained to reconstruct the edge representation alongside the classification objective.
 
-## Quick start
+## Modular implementation (recommended)
 
-The current implementation is a single script, `Code.py`. Run it from the repository root so that CIFAR-10 is downloaded to `./data` and the three example images at the root can be found.
+The refactored package is in `src/edge_learning/`:
 
 ```bash
 python -m venv .venv
-# macOS/Linux
-source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
+# macOS/Linux:
+source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-python Code.py
+python -m pip install -e .
+python -m edge_learning.cli --epochs 50
 ```
 
-A CUDA-capable GPU is recommended. The script automatically selects CUDA when available.
+The CLI downloads CIFAR-10 to `./data`, trains the model, evaluates the held-out test split, saves a checkpoint to `artifacts/edge_texture_cnn.pt`, and displays an edge reconstruction plus predictions for the bundled cat/dog/frog examples. Use `--skip-examples` on headless machines. Run `python -m edge_learning.cli --help` for options.
 
-## Repository layout
+## Project structure
 
-- `Code.py` — original end-to-end model, data pipeline, training loop, evaluation, and prediction script.
-- `images/` — figures and visual material associated with the project.
-- `test_cat.png`, `test_dog.png`, `test_frog.png` — example prediction images used by the script.
-- `docs/REPRODUCIBILITY.md` — setup, data, and implementation notes.
-- `requirements.txt` — dependencies.
+- `src/edge_learning/data.py` — CIFAR-10 transforms and reproducible 80/10/10 split.
+- `src/edge_learning/model.py` — dual-branch CNN and edge decoder.
+- `src/edge_learning/engine.py` — training and evaluation loops.
+- `src/edge_learning/predict.py` — prediction for external images.
+- `src/edge_learning/visualization.py` — edge reconstruction plot.
+- `src/edge_learning/cli.py` — command-line entry point.
+- `tests/` — lightweight architecture and gradient tests.
+- `Code.py` — original single-file experiment, retained unchanged.
+- `images/` — project figures; `test_*.png` — sample prediction images.
 
-## Method
+## Model idea
 
-The script creates Sobel edge maps from input images, processes RGB texture and grayscale edge information in separate convolutional branches, combines the learned representations for CIFAR-10 classification, and uses a decoder with an edge reconstruction loss. The total training loss in the script is classification loss plus a weighted edge loss.
+Sobel filters generate an edge magnitude map. One CNN branch processes RGB texture; another processes the edge map. The learned representations are combined for CIFAR-10 classification, while a decoder reconstructs the edge map. The objective is cross-entropy plus a weighted L1 reconstruction loss.
 
-## Important limitations
+## Reproducibility and differences from the original
 
-This is the original experimental implementation, not a validated benchmark. The script currently performs its training and prediction work at import/run time rather than exposing a reusable command-line interface. The data split is created with `random_split` without an explicit generator seed. Record the environment and run configuration before comparing results.
+The modular version makes the split reproducible (seed 42 by default) and uses deterministic preprocessing for validation/test data. The original script applies random crop/flip transforms to every split and has no explicit split seed. This is an intentional experimental hygiene improvement, so its metrics need not match the original script. The original `Code.py` remains available for exact historical reference.
 
-The original `Code.py` is preserved unchanged in this cleanup branch.
+## Tests
+
+```bash
+python -m unittest discover -s tests
+```
+
+Tests check model output shapes and gradient flow; they do not train on the full CIFAR-10 dataset or establish research performance.

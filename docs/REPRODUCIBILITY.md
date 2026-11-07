@@ -1,37 +1,30 @@
-# Reproducibility and implementation notes
+# Implementation and reproducibility notes
 
-## Run
+## Recommended entry point
 
-From the repository root:
+Install the package in editable mode and run `python -m edge_learning.cli`. The package uses a `src/` layout and exposes model, data, training, evaluation, prediction, and visualization modules separately.
 
-```bash
-python -m pip install -r requirements.txt
-python Code.py
-```
+## Dataset and split
 
-The script downloads CIFAR-10 using torchvision. It also attempts predictions on `test_cat.png`, `test_dog.png`, and `test_frog.png`, so keep the working directory at the repository root.
+CIFAR-10 is downloaded through torchvision into `./data`. The modular loader creates an 80/10/10 split using a seeded permutation. Training uses random horizontal flips and random crops; validation and test use normalization only. This differs from the legacy `Code.py`, which applies the same random transform to all subsets and uses an unseeded `random_split`.
 
-## Dependencies
+## Architecture
 
-The implementation imports PyTorch, torchvision, Matplotlib, Pillow, and the Python standard library. The versions in `requirements.txt` are minimum versions, not a hardware-specific CUDA lockfile. Install a PyTorch build compatible with your machine.
+- Fixed Sobel X/Y kernels are registered as model buffers, so they follow the model across CPU/GPU.
+- RGB texture branch: 3→64→128→256 channels, with batch normalization, ReLU, and 2× pooling after each block.
+- Edge branch: 1→64→128→256 channels with corresponding pooling.
+- Decoder reconstructs a 32×32 edge map from intermediate shape features using a skip connection.
+- Classifier concatenates flattened texture features with half-scaled shape features.
+- Objective: cross-entropy + `edge_weight × L1(reconstructed_edges, sobel_edges)`.
 
-## Data and split
+## Training and artifacts
 
-CIFAR-10 is downloaded into `./data`. The script creates train/validation/test subsets from the training dataset using an 80/10/10 split. It does not set a generator for `random_split`, so the exact split is not guaranteed to repeat between runs.
+Default settings mirror the original script's 50 epochs, batch size 128, Adam learning rate 0.001, StepLR step size 20 and gamma 0.5, and edge loss weight 0.7. The CLI saves a state-dict checkpoint under `artifacts/`. Checkpoints are ignored by Git by default.
 
-## Model outline
+## Reproducibility checklist
 
-- Sobel X/Y kernels generate an edge magnitude map.
-- A texture branch processes the RGB image.
-- A shape branch processes the edge map.
-- A decoder reconstructs the edge representation.
-- The classifier combines the branch features.
-- Training minimizes cross-entropy plus a weighted L1 edge-reconstruction loss.
+Record Python, PyTorch, torchvision, CUDA, GPU, seed, batch size, learning rate, epoch count, split indices/seed, and edge-loss weight. The default split seed is 42. GPU kernels may still be nondeterministic.
 
-## Record for future experiments
+## Legacy implementation
 
-Record Python/PyTorch/torchvision versions, CUDA runtime, GPU model, random seed, data split, batch size, optimizer settings, epoch count, and evaluation results. The script currently hard-codes most of these settings.
-
-## Known scope
-
-This documentation does not claim that the experiment has been re-run or independently validated. The implementation is still a single script; modular extraction and automated tests are separate future refactoring work.
+The root-level `Code.py` is preserved unchanged. It trains immediately when run and is retained as a historical snapshot. The modular package is the recommended entry point for future experiments. Do not assume its results are numerically identical to the legacy script because the data split and evaluation transforms are improved.
